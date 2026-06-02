@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ตรวจสอบสถานะเครื่องจักร</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 sm:p-8 font-sans">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl shadow-xs border border-slate-200/80">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    🏭 Monitor สถานะเครื่องจักรประจำวัน
+                </h1>
+                <p class="text-slate-500 text-sm mt-1">ค้นหาและตรวจสอบสถานะเครื่องจักรย้อนหลังที่บันทึกผ่านระบบ LINE</p>
+            </div>
+            
+            <div class="w-full lg:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                
+                <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl">
+                    <label for="status-filter" class="text-sm font-semibold text-slate-600 shrink-0">🔌 ตัวกรองเครื่อง:</label>
+                    <select id="status-filter" onchange="renderTableData()" class="bg-transparent text-slate-800 font-medium focus:outline-none cursor-pointer text-sm pr-2">
+                        <option value="all">👁️ แสดงเครื่องจักรทั้งหมด</option>
+                        <option value="active_only">⚡ ดูเฉพาะเครื่องที่ "เปิดทำงาน"</option>
+                        <option value="inactive_only">💤 ดูเฉพาะเครื่องที่ "ไม่ได้เปิดเครื่อง"</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl">
+                    <label for="report-date" class="text-sm font-semibold text-slate-600 shrink-0">📅 เลือกวันที่:</label>
+                    <input type="date" id="report-date" onchange="loadDeviceStatus()" class="bg-transparent text-slate-800 font-medium focus:outline-none cursor-pointer text-sm">
+                </div>
+
+                <button onclick="loadDeviceStatus()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-5 rounded-xl shadow-xs transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer text-sm shrink-0">
+                    <span>🔄</span> รีเฟรช
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="summary-counters">
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs">
+                <p class="text-xs font-medium text-slate-500 uppercase">🟢 บันทึกผล</p>
+                <p class="text-2xl font-bold text-green-600 mt-1" id="count-success">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs">
+                <p class="text-xs font-medium text-slate-500 uppercase">🔴 ไม่ได้บันทึกผล</p>
+                <p class="text-2xl font-bold text-red-600 mt-1" id="count-fail">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs">
+                <p class="text-xs font-medium text-slate-500 uppercase">⚫ ไม่ได้เปิดเครื่อง</p>
+                <p class="text-2xl font-bold text-zinc-600 mt-1" id="count-off">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs">
+                <p class="text-xs font-medium text-slate-500 uppercase">🟠 รอการแก้ไข</p>
+                <p class="text-2xl font-bold text-amber-600 mt-1" id="count-pending">0</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left">
+                    <thead class="bg-slate-800 text-white text-xs uppercase font-semibold">
+                        <tr>
+                            <th class="px-6 py-4 tracking-wider">เครื่อง / รายการขวด</th>
+                            <th class="px-6 py-4 tracking-wider">กะทำงาน</th>
+                            <th class="px-6 py-4 tracking-wider">สถานะการทำงาน</th>
+                            <th class="px-6 py-4 tracking-wider">เวลาอัปเดตล่าสุด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-200 text-sm text-slate-700 bg-white">
+                        <tr>
+                            <td colspan="4" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูล...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️ ลิงก์ URL เว็บแอปเดิมของคุณ
+        const API_URL = "https://script.google.com/macros/s/AKfycbw5X8520LY1Tv7IPcw7X-egptxKBm57HOHrwctqdF_K8qbGbNFngUrXveYuABvNN9KwOw/exec"; 
+        
+        let serverDataCache = []; // หน่วยความจำชั่วคราวเก็บข้อมูลจากชีต
+
+        function setDefaultDate() {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000; 
+            const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+            document.getElementById('report-date').value = localISOTime;
+        }
+
+        // 1. ดึงข้อมูลจากฐานข้อมูล Google Sheets
+        async function loadDeviceStatus() {
+            const tableBody = document.getElementById('table-body');
+            const selectedDate = document.getElementById('report-date').value;
+            
+            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูลของวันที่ ${selectedDate}...</td></tr>`;
+            
+            try {
+                const response = await fetch(`${API_URL}?date=${selectedDate}`);
+                serverDataCache = await response.json();
+                
+                renderTableData(); // แสดงผลลงตาราง
+
+            } catch (error) {
+                console.error("Error standard fetch:", error);
+                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500 font-semibold">❌ ดึงข้อมูลไม่สำเร็จ โปรดตรวจสอบการ Deploy Web App ใน Apps Script</td></tr>`;
+            }
+        }
+
+        // 2. ฟังก์ชันกรองและวาดตารางตามตัวเลือกใน Dropdown แบบเรียลไทม์
+        function renderTableData() {
+            const tableBody = document.getElementById('table-body');
+            const filterValue = document.getElementById('status-filter').value; // ดึงค่าจากคอมโบโบกซ์กรองข้อมูล
+            
+            tableBody.innerHTML = ''; 
+            
+            let success = 0, fail = 0, off = 0, pending = 0;
+            let displayedRowsCount = 0;
+
+            if (serverDataCache.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium">📭 ไม่พบข้อมูลเครื่องจักรถูกบันทึกในวันที่เลือก</td></tr>`;
+                updateCounters(0, 0, 0, 0);
+                return;
+            }
+
+            // จัดเรียงรหัสเครื่องจักรจากน้อยไปมาก
+            serverDataCache.sort((a, b) => a.deviceName.localeCompare(b.deviceName, undefined, {numeric: true, sensitivity: 'base'}));
+
+            serverDataCache.forEach(item => {
+                let currentStatus = item.status ? item.status.trim() : "-";
+                
+                // 📊 นับยอดสรุปภาพรวมของโรงงานจริง (คงที่ไว้เสมอ)
+                if (currentStatus === "บันทึกผล") success++;
+                else if (currentStatus === "ไม่ได้บันทึกผล") fail++;
+                else if (currentStatus === "ไม่ได้เปิดเครื่อง") off++;
+                else if (currentStatus === "รอการแก้ไข") pending++;
+
+                // 🔍 เงื่อนไขการกรองแถวในตาราง
+                let isConditionMatch = true;
+                
+                if (filterValue === "active_only") {
+                    // ดูเฉพาะเครื่องเปิด -> ถ้าเจอเครื่องที่ "ไม่ได้เปิดเครื่อง" ให้ซ่อน
+                    if (currentStatus === "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+                } else if (filterValue === "inactive_only") {
+                    // ดูเฉพาะเครื่องปิด -> ถ้าเจอเครื่องที่มีสถานะอื่นที่ไม่ใช่ "ไม่ได้เปิดเครื่อง" ให้ซ่อน
+                    if (currentStatus !== "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+                }
+
+                // ถ้าไม่ตรงเงื่อนไขตัวกรองให้ข้ามไป
+                if (!isConditionMatch) return; 
+
+                displayedRowsCount++;
+
+                // กำหนดสีสรรของสถานะ
+                let badgeColor = "bg-slate-100 text-slate-700 border-slate-200";
+                let dotColor = "bg-slate-400";
+                
+                if (currentStatus === "บันทึกผล") {
+                    badgeColor = "bg-green-50 text-green-700 border border-green-200";
+                    dotColor = "bg-green-500";
+                } else if (currentStatus === "ไม่ได้บันทึกผล") {
+                    badgeColor = "bg-red-50 text-red-700 border border-red-200";
+                    dotColor = "bg-red-500";
+                } else if (currentStatus === "ไม่ได้เปิดเครื่อง") {
+                    badgeColor = "bg-zinc-100 text-zinc-700 border border-zinc-200";
+                    dotColor = "bg-zinc-500";
+                } else if (currentStatus === "รอการแก้ไข") {
+                    badgeColor = "bg-amber-50 text-amber-700 border border-amber-200";
+                    dotColor = "bg-amber-500";
+                }
+
+                const shiftBadge = item.shift === "กลางวัน" 
+                    ? `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-xs font-semibold">☀️ กลางวัน</span>`
+                    : `<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md text-xs font-semibold">🌙 กลางคืน</span>`;
+
+                const rowHtml = `
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="px-6 py-4.5 font-bold text-slate-900">${item.deviceName}</td>
+                        <td class="px-6 py-4.5">${shiftBadge}</td>
+                        <td class="px-6 py-4.5">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeColor}">
+                                <span class="h-2 w-2 rounded-full ${dotColor} ${currentStatus === 'บันทึกผล' ? 'animate-pulse' : ''}"></span>
+                                ${currentStatus}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4.5 text-slate-500 font-mono text-xs">${item.dateStr}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += rowHtml;
+            });
+
+            // กรณีที่ตัวกรองนั้นไม่มีข้อมูลแสดงเลย
+            if (displayedRowsCount === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium">🔍 ไม่พบเครื่องจักรที่ตรงกับเงื่อนไขตัวกรองที่คุณเลือก</td></tr>`;
+            }
+
+            // อัปเดตตัวเลขการนับสรุปด้านบน
+            updateCounters(success, fail, off, pending);
+        }
+
+        function updateCounters(s, f, o, p) {
+            document.getElementById('count-success').innerText = s;
+            document.getElementById('count-fail').innerText = f;
+            document.getElementById('count-off').innerText = o;
+            document.getElementById('count-pending').innerText = p;
+        }
+
+        window.onload = function() {
+            setDefaultDate();
+            loadDeviceStatus();
+        };
+    </script>
+</body>
+</html>
