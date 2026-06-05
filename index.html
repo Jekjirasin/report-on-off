@@ -6,65 +6,31 @@
     <title>ระบบจัดการข้อมูลเครื่องจักรประจำวัน</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body class="bg-slate-50 min-h-screen font-sans flex items-center justify-center p-4 sm:p-6">
-
+<body class="bg-slate-50 min-h-screen font-sans flex items-center justify-center p-4">
     <div class="max-w-3xl w-full">
-        
         <header class="text-center mb-10">
-            <div class="inline-flex items-center justify-center h-16 w-16 bg-indigo-600 text-white text-3xl rounded-2xl shadow-md mb-4">
-                🏭
-            </div>
-            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">
-                ระบบจัดการสถานะเครื่องจักรประจำวัน
-            </h1>
-            <p class="text-slate-500 mt-2 text-sm sm:text-base max-w-md mx-auto">
-                ยินดีต้อนรับสู่ระบบบันทึกและตรวจสอบสถานะเครื่องจักรหน้าโรงงาน เชื่อมต่อข้อมูลเรียลไทม์ร่วมกับ LINE Bot และ Google Sheets
-            </p>
+            <div class="inline-flex items-center justify-center h-16 w-16 bg-indigo-600 text-white text-3xl rounded-2xl shadow-md mb-4">🏭</div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">ระบบจัดการสถานะเครื่องจักรประจำวัน</h1>
+            <p class="text-slate-500 mt-2 text-sm max-w-md mx-auto">เชื่อมต่อข้อมูลเรียลไทม์ร่วมกับ LINE Bot และ Google Sheets</p>
         </header>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
             <a href="form.html" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-indigo-500/50 transition-all duration-200 flex flex-col justify-between">
                 <div>
-                    <div class="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl font-bold group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                        📝
-                    </div>
-                    <h2 class="text-lg font-bold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">
-                        บันทึกสถานะเครื่องจักร
-                    </h2>
-                    <p class="text-slate-500 text-sm mt-1">
-                        สำหรับพนักงานคีย์ข้อมูลประจำกะ เพื่อบันทึก เปิด/ปิด หรืออัปเดตรายงานซ่อมบำรุงเครื่องจักรประจำวันลงฐานข้อมูล
-                    </p>
+                    <div class="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-xl font-bold group-hover:bg-emerald-600 group-hover:text-white transition-colors">📝</div>
+                    <h2 class="text-lg font-bold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">บันทึกสถานะเครื่องจักร</h2>
+                    <p class="text-slate-500 text-sm mt-1">สำหรับพนักงานคีย์ข้อมูลประจำกะ เพื่อบันทึก เปิด/ปิด หรืออัปเดตรายงาน</p>
                 </div>
-                <div class="mt-6 flex items-center text-xs font-bold text-emerald-600 gap-1 group-hover:translate-x-1 transition-transform">
-                    เปิดหน้าฟอร์มกรอกข้อมูล <span>➔</span>
-                </div>
+                <div class="mt-6 flex items-center text-xs font-bold text-emerald-600 gap-1 group-hover:translate-x-1 transition-transform">เปิดหน้าฟอร์มกรอกข้อมูล <span>➔</span></div>
             </a>
-
             <a href="dashboard.html" class="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-indigo-500/50 transition-all duration-200 flex flex-col justify-between">
                 <div>
-                    <div class="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                        📊
-                    </div>
-                    <h2 class="text-lg font-bold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">
-                        แดชบอร์ด Monitor Status
-                    </h2>
-                    <p class="text-slate-500 text-sm mt-1">
-                        สำหรับหัวหน้างานและผู้บริหาร ตรวจสอบสถานะภาพรวมของโรงงาน ค้นหารายเครื่องจักร และคัดกรองข้อมูลแยกตามวันที่ย้อนหลัง
-                    </p>
+                    <div class="h-12 w-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl font-bold group-hover:bg-indigo-600 group-hover:text-white transition-colors">📊</div>
+                    <h2 class="text-lg font-bold text-slate-900 mt-4 group-hover:text-indigo-600 transition-colors">แดชบอร์ด Monitor Status</h2>
+                    <p class="text-slate-500 text-sm mt-1">สำหรับหัวหน้างานและผู้บริหาร ตรวจสอบสถานะภาพรวม และคัดกรองข้อมูล</p>
                 </div>
-                <div class="mt-6 flex items-center text-xs font-bold text-indigo-600 gap-1 group-hover:translate-x-1 transition-transform">
-                    เปิดหน้าแดชบอร์ดรายงาน <span>➔</span>
-                </div>
+                <div class="mt-6 flex items-center text-xs font-bold text-indigo-600 gap-1 group-hover:translate-x-1 transition-transform">เปิดหน้าแดชบอร์ดรายงาน <span>➔</span></div>
             </a>
-
         </div>
-
-        <footer class="text-center mt-12 text-slate-400 text-xs font-medium">
-            🔒 ระบบภายในโรงงานอุตสาหกรรม • ข้อมูลอัปเดตแบบ Real-time
-        </footer>
-
     </div>
-
 </body>
 </html>

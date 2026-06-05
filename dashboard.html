@@ -3,98 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>บันทึกข้อมูลเครื่องจักรประจำวัน</title>
+    <title>Dashboard ตรวจสอบสถานะเครื่องจักร</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 sm:p-8 font-sans flex items-center justify-center">
-
-    <div class="max-w-md w-full bg-white p-6 sm:p-8 rounded-2xl shadow-md border border-slate-200/80">
-        
-        <header class="mb-6 border-b border-slate-100 pb-4 flex justify-between items-start">
+<body class="bg-slate-50 min-h-screen p-4 sm:p-8 font-sans">
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl shadow-xs border border-slate-200/80">
             <div>
-                <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    📝 บันทึกข้อมูลเครื่องจักร
-                </h1>
-                <p class="text-slate-500 text-xs mt-1">ส่งข้อมูลบันทึกสถานะเข้าสู่ระบบ Google Sheets</p>
+                <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">🏭 Monitor Status เครื่องจักรประจำวัน</h1>
+                <p class="text-slate-500 text-sm mt-1">ค้นหา ตรวจสอบ และคัดกรองสถานะเครื่องจักรย้อนหลัง</p>
             </div>
-            <div class="flex gap-1">
-                <a href="index.html" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-1.5 px-2.5 rounded-lg transition-colors">หน้าแรก</a>
-                <a href="dashboard.html" class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold py-1.5 px-2.5 rounded-lg transition-colors">📊 แดชบอร์ด</a>
+            <div class="w-full lg:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl w-full sm:w-64">
+                    <span class="text-slate-400 shrink-0">🔍</span>
+                    <input type="text" id="search-input" oninput="renderTableData()" placeholder="พิมพ์ชื่อเครื่องที่ต้องการ..." class="bg-transparent text-slate-800 font-medium focus:outline-none text-sm w-full placeholder-slate-400">
+                </div>
+                <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl shrink-0">
+                    <label for="status-filter" class="text-sm font-semibold text-slate-600 shrink-0">🔌 เครื่อง:</label>
+                    <select id="status-filter" onchange="renderTableData()" class="bg-transparent text-slate-800 font-medium focus:outline-none cursor-pointer text-sm pr-2">
+                        <option value="all">👁️ ทั้งหมด</option>
+                        <option value="active_only">⚡ เฉพาะเครื่องที่ "เปิด"</option>
+                        <option value="inactive_only">💤 เฉพาะเครื่องที่ "ปิด"</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl shrink-0">
+                    <label for="report-date" class="text-sm font-semibold text-slate-600 shrink-0">📅 วันที่:</label>
+                    <input type="date" id="report-date" onchange="loadDeviceStatus()" class="bg-transparent text-slate-800 font-medium focus:outline-none cursor-pointer text-sm">
+                </div>
+                <button onclick="loadDeviceStatus()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-5 rounded-xl shadow-xs transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 cursor-pointer text-sm shrink-0"><span>🔄</span> รีเฟรช</button>
+                <div class="flex gap-2 shrink-0">
+                    <a href="index.html" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center transition-colors">หน้าแรก</a>
+                    <a href="form.html" class="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-5 rounded-xl shadow-xs text-sm flex items-center justify-center gap-1 transition-colors"><span>📝</span> เพิ่มข้อมูล</a>
+                </div>
             </div>
         </header>
 
-        <form id="status-form" onsubmit="submitForm(event)" class="space-y-5">
-            <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">🤖 ชื่อเครื่องจักร / รายการ</label>
-                <input type="text" id="form-device-name" required placeholder="เช่น CR-01 250 วันเวย์" 
-                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white font-medium">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="summary-counters">
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs"><p class="text-xs font-medium text-slate-500 uppercase">🟢 บันทึกผล</p><p class="text-2xl font-bold text-green-600 mt-1" id="count-success">0</p></div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs"><p class="text-xs font-medium text-slate-500 uppercase">🔴 ไม่ได้บันทึกผล</p><p class="text-2xl font-bold text-red-600 mt-1" id="count-fail">0</p></div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs"><p class="text-xs font-medium text-slate-500 uppercase">⚫ ไม่ได้เปิดเครื่อง</p><p class="text-2xl font-bold text-zinc-600 mt-1" id="count-off">0</p></div>
+            <div class="bg-white p-4 rounded-xl border border-slate-200/60 shadow-xs"><p class="text-xs font-medium text-slate-500 uppercase">🟠 รอการแก้ไข</p><p class="text-2xl font-bold text-amber-600 mt-1" id="count-pending">0</p></div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left">
+                    <thead class="bg-slate-800 text-white text-xs uppercase font-semibold">
+                        <tr>
+                            <th class="px-6 py-4 tracking-wider">เครื่อง / รายการขวด</th>
+                            <th class="px-6 py-4 tracking-wider">กะทำงาน</th>
+                            <th class="px-6 py-4 tracking-wider">สถานะการทำงาน</th>
+                            <th class="px-6 py-4 tracking-wider">เวลาอัปเดตล่าสุด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-200 text-sm text-slate-700 bg-white">
+                        <tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูล...</td></tr>
+                    </tbody>
+                </table>
             </div>
-
-            <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">⏰ กะทำงาน</label>
-                <div class="grid grid-cols-2 gap-3">
-                    <label class="border border-slate-200 rounded-xl p-3 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 text-sm font-semibold has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 text-slate-700">
-                        <input type="radio" name="form-shift" value="กลางวัน" checked class="accent-indigo-600"> ☀️ กลางวัน
-                    </label>
-                    <label class="border border-slate-200 rounded-xl p-3 flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 text-sm font-semibold has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/50 text-slate-700">
-                        <input type="radio" name="form-shift" value="กลางคืน" class="accent-indigo-600"> 🌙 กลางคืน
-                    </label>
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">📊 สถานะการทำงาน</label>
-                <select id="form-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white font-bold cursor-pointer text-slate-800">
-                    <option value="บันทึกผล" class="text-green-600 font-bold">🟢 บันทึกผล</option>
-                    <option value="ไม่ได้บันทึกผล" class="text-red-600 font-bold">🔴 ไม่ได้บันทึกผล</option>
-                    <option value="ไม่ได้เปิดเครื่อง" class="text-zinc-600 font-bold">⚫ ไม่ได้เปิดเครื่อง</option>
-                    <option value="รอการแก้ไข" class="text-amber-600 font-bold">🟠 รอการแก้ไข</option>
-                </select>
-            </div>
-
-            <button type="submit" id="submit-btn" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all duration-200 active:scale-98 flex items-center justify-center gap-2 cursor-pointer text-sm">
-                <span>📥</span> บันทึกข้อมูลลง Google Sheets
-            </button>
-        </form>
-
+        </div>
     </div>
-
     <script>
-        // ⚠️ ลิงก์ Web App เดียวกันกับหน้าแดชบอร์ดของคุณ
         const API_URL = "https://script.google.com/macros/s/AKfycbyxR5p9wETP6q5LF4yZ3hvZWKIJLf3tcgqGn8algLGEiKtGZyPGw7INRLmfLfxHL4ZQrw/exec"; 
-
-        async function submitForm(event) {
-            event.preventDefault();
-            
-            const submitBtn = document.getElementById('submit-btn');
-            const deviceName = document.getElementById('form-device-name').value.trim();
-            const shift = document.querySelector('input[name="form-shift"]:checked').value;
-            const status = document.getElementById('form-status').value;
-            
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `<span>⏳</span> กำลังส่งข้อมูล...`;
-            submitBtn.className = "w-full mt-2 bg-slate-400 text-white font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 cursor-not-allowed";
-
+        let serverDataCache = []; 
+        function setDefaultDate() {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000; 
+            const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+            document.getElementById('report-date').value = localISOTime;
+        }
+        async function loadDeviceStatus() {
+            const tableBody = document.getElementById('table-body');
+            const selectedDate = document.getElementById('report-date').value;
+            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูลของวันที่ ${selectedDate}...</td></tr>`;
             try {
-                // ส่งค่าแบบ POST ไปหา Google Apps Script
-                await fetch(API_URL, {
-                    method: "POST",
-                    body: JSON.stringify({ deviceName, shift, status })
-                });
-                
-                alert("🎉 บันทึกข้อมูลเข้า Google Sheets เรียบร้อยแล้ว!");
-                document.getElementById('status-form').reset(); // ล้างฟอร์มเคลียร์ค่าว่าง
-                
+                const response = await fetch(`${API_URL}?date=${selectedDate}`);
+                serverDataCache = await response.json();
+                renderTableData(); 
             } catch (error) {
-                console.error("Error submitting form:", error);
-                alert("❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล โปรดตรวจสอบสิทธิ์ Web App");
-            } finally {
-                // คืนค่าปุ่มให้กลับมาใช้งานได้ใหม่
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `<span>📥</span> บันทึกข้อมูลลง Google Sheets`;
-                submitBtn.className = "w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all duration-200 active:scale-98 flex items-center justify-center gap-2 cursor-pointer text-sm";
+                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500 font-semibold">❌ ดึงข้อมูลไม่สำเร็จ โปรดตรวจสอบ Web App</td></tr>`;
             }
         }
+        function renderTableData() {
+            const tableBody = document.getElementById('table-body');
+            const filterValue = document.getElementById('status-filter').value; 
+            const searchQuery = document.getElementById('search-input').value.trim().toLowerCase(); 
+            tableBody.innerHTML = ''; 
+            let success = 0, fail = 0, off = 0, pending = 0;
+            let displayedRowsCount = 0;
+            if (serverDataCache.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium">📭 ไม่พบข้อมูลเครื่องจักรถูกบันทึกในวันที่เลือก</td></tr>`;
+                updateCounters(0, 0, 0, 0);
+                return;
+            }
+            serverDataCache.sort((a, b) => a.deviceName.localeCompare(b.deviceName, undefined, {numeric: true, sensitivity: 'base'}));
+            serverDataCache.forEach(item => {
+                let currentStatus = item.status ? item.status.trim() : "-";
+                let deviceNameLower = item.deviceName ? item.deviceName.toLowerCase() : "";
+                if (currentStatus === "บันทึกผล") success++;
+                else if (currentStatus === "ไม่ได้บันทึกผล") fail++;
+                else if (currentStatus === "ไม่ได้เปิดเครื่อง") off++;
+                else if (currentStatus === "รอการแก้ไข") pending++;
+                let isConditionMatch = true;
+                if (filterValue === "active_only" && currentStatus === "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+                else if (filterValue === "inactive_only" && currentStatus !== "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+                if (searchQuery !== "" && !deviceNameLower.includes(searchQuery)) isConditionMatch = false;
+                if (!isConditionMatch) return; 
+                displayedRowsCount++;
+                let badgeColor = "bg-slate-100 text-slate-700 border-slate-200", dotColor = "bg-slate-400";
+                if (currentStatus === "บันทึกผล") { badgeColor = "bg-green-50 text-green-700 border border-green-200"; dotColor = "bg-green-500"; }
+                else if (currentStatus === "ไม่ได้บันทึกผล") { badgeColor = "bg-red-50 text-red-700 border border-red-200"; dotColor = "bg-red-500"; }
+                else if (currentStatus === "ไม่ได้เปิดเครื่อง") { badgeColor = "bg-zinc-100 text-zinc-700 border border-zinc-200"; dotColor = "bg-zinc-500"; }
+                else if (currentStatus === "รอการแก้ไข") { badgeColor = "bg-amber-50 text-amber-700 border border-amber-200"; dotColor = "bg-amber-500"; }
+                const shiftBadge = item.shift === "กลางวัน" 
+                    ? `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-xs font-semibold">☀️ กลางวัน</span>`
+                    : `<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md text-xs font-semibold">🌙 กลางคืน</span>`;
+                const rowHtml = `
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="px-6 py-4.5 font-bold text-slate-900">${item.deviceName}</td>
+                        <td class="px-6 py-4.5">${shiftBadge}</td>
+                        <td class="px-6 py-4.5">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeColor}">
+                                <span class="h-2 w-2 rounded-full ${dotColor} ${currentStatus === 'บันทึกผล' ? 'animate-pulse' : ''}"></span>
+                                ${currentStatus}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4.5 text-slate-500 font-mono text-xs">${item.dateStr}</td>
+                    </tr>`;
+                tableBody.innerHTML += rowHtml;
+            });
+            if (displayedRowsCount === 0) tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium">🔍 ไม่พบข้อมูลเครื่องจักรที่ตรงกับการค้นหา</td></tr>`;
+            updateCounters(success, fail, off, pending);
+        }
+        function updateCounters(s, f, o, p) {
+            document.getElementById('count-success').innerText = s;
+            document.getElementById('count-fail').innerText = f;
+            document.getElementById('count-off').innerText = o;
+            document.getElementById('count-pending').innerText = p;
+        }
+        window.onload = function() { setDefaultDate(); loadDeviceStatus(); };
     </script>
 </body>
 </html>
