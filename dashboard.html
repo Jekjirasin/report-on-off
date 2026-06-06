@@ -24,6 +24,7 @@
                         <option value="all">👁️ ทั้งหมด</option>
                         <option value="active_only">⚡ เฉพาะเครื่องที่ "เปิด"</option>
                         <option value="inactive_only">💤 เฉพาะเครื่องที่ "ปิด"</option>
+                        <option value="pending_only">🟠 เฉพาะเครื่องที่ "รอการแก้ไข"</option>
                     </select>
                 </div>
                 <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl shrink-0">
@@ -54,10 +55,11 @@
                             <th class="px-6 py-4 tracking-wider">กะทำงาน</th>
                             <th class="px-6 py-4 tracking-wider">สถานะการทำงาน</th>
                             <th class="px-6 py-4 tracking-wider">เวลาอัปเดตล่าสุด</th>
+                            <th class="px-6 py-4 tracking-wider text-center">จัดการ</th>
                         </tr>
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-200 text-sm text-slate-700 bg-white">
-                        <tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูล...</td></tr>
+                        <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูล...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -74,13 +76,13 @@
         async function loadDeviceStatus() {
             const tableBody = document.getElementById('table-body');
             const selectedDate = document.getElementById('report-date').value;
-            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูลของวันที่ ${selectedDate}...</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูลของวันที่ ${selectedDate}...</td></tr>`;
             try {
                 const response = await fetch(`${API_URL}?date=${selectedDate}`);
                 serverDataCache = await response.json();
                 renderTableData(); 
             } catch (error) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500 font-semibold">❌ ดึงข้อมูลไม่สำเร็จ โปรดตรวจสอบ Web App</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-red-500 font-semibold">❌ ดึงข้อมูลไม่สำเร็จ โปรดตรวจสอบ Web App</td></tr>`;
             }
         }
         function renderTableData() {
@@ -91,7 +93,7 @@
             let success = 0, fail = 0, off = 0, pending = 0;
             let displayedRowsCount = 0;
             if (serverDataCache.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium">📭 ไม่พบข้อมูลเครื่องจักรถูกบันทึกในวันที่เลือก</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium">📭 ไม่พบข้อมูลเครื่องจักรถูกบันทึกในวันที่เลือก</td></tr>`;
                 updateCounters(0, 0, 0, 0);
                 return;
             }
@@ -103,9 +105,12 @@
                 else if (currentStatus === "ไม่ได้บันทึกผล") fail++;
                 else if (currentStatus === "ไม่ได้เปิดเครื่อง") off++;
                 else if (currentStatus === "รอการแก้ไข") pending++;
+                
                 let isConditionMatch = true;
                 if (filterValue === "active_only" && currentStatus === "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
                 else if (filterValue === "inactive_only" && currentStatus !== "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+                else if (filterValue === "pending_only" && currentStatus !== "รอการแก้ไข") isConditionMatch = false;
+                
                 if (searchQuery !== "" && !deviceNameLower.includes(searchQuery)) isConditionMatch = false;
                 if (!isConditionMatch) return; 
                 displayedRowsCount++;
@@ -117,6 +122,10 @@
                 const shiftBadge = item.shift === "กลางวัน" 
                     ? `<span class="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-xs font-semibold">☀️ กลางวัน</span>`
                     : `<span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md text-xs font-semibold">🌙 กลางคืน</span>`;
+                
+                // เข้ารหัสข้อมูลเพื่อส่งผ่าน URL สำหรับแก้ไขข้อมูลในหน้า form.html
+                const editUrl = `form.html?deviceName=${encodeURIComponent(item.deviceName)}&shift=${encodeURIComponent(item.shift)}&status=${encodeURIComponent(currentStatus)}`;
+
                 const rowHtml = `
                     <tr class="hover:bg-slate-50/70 transition-colors">
                         <td class="px-6 py-4.5 font-bold text-slate-900">${item.deviceName}</td>
@@ -128,10 +137,15 @@
                             </span>
                         </td>
                         <td class="px-6 py-4.5 text-slate-500 font-mono text-xs">${item.dateStr}</td>
+                        <td class="px-6 py-4.5 text-center">
+                            <a href="${editUrl}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg text-xs transition-colors shadow-xs">
+                                <span>✏️</span> แก้ไข
+                            </a>
+                        </td>
                     </tr>`;
                 tableBody.innerHTML += rowHtml;
             });
-            if (displayedRowsCount === 0) tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-slate-400 font-medium">🔍 ไม่พบข้อมูลเครื่องจักรที่ตรงกับการค้นหา</td></tr>`;
+            if (displayedRowsCount === 0) tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium">🔍 ไม่พบข้อมูลเครื่องจักรที่ตรงกับการค้นหา</td></tr>`;
             updateCounters(success, fail, off, pending);
         }
         function updateCounters(s, f, o, p) {
