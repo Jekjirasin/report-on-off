@@ -48,19 +48,55 @@
     </div>
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbyxR5p9wETP6q5LF4yZ3hvZWKIJLf3tcgqGn8algLGEiKtGZyPGw7INRLmfLfxHL4ZQrw/exec"; 
+
+        // --- ส่วนที่เพิ่มใหม่สำหรับดึงข้อมูลมาแก้ไข ---
+        function checkEditMode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const deviceName = urlParams.get('deviceName');
+            const shift = urlParams.get('shift');
+            const status = urlParams.get('status');
+
+            if (deviceName) {
+                document.getElementById('form-device-name').value = deviceName;
+                document.querySelector('h1').innerHTML = "✏️ แก้ไขข้อมูลเครื่องจักร";
+                document.getElementById('submit-btn').innerHTML = "📥 อัปเดตข้อมูลลง Google Sheets";
+            }
+            if (shift) {
+                const shiftRadios = document.getElementsByName('form-shift');
+                shiftRadios.forEach(radio => {
+                    if (radio.value === shift) radio.checked = true;
+                });
+            }
+            if (status) {
+                document.getElementById('form-status').value = status;
+            }
+        }
+        // เรียกใช้เมื่อโหลดหน้าเว็บ
+        window.addEventListener('DOMContentLoaded', checkEditMode);
+        // -------------------------------------------
+
         async function submitForm(event) {
             event.preventDefault();
             const submitBtn = document.getElementById('submit-btn');
             const deviceName = document.getElementById('form-device-name').value.trim();
             const shift = document.querySelector('input[name="form-shift"]:checked').value;
             const status = document.getElementById('form-status').value;
+            
             submitBtn.disabled = true;
             submitBtn.innerHTML = `<span>⏳</span> กำลังส่งข้อมูล...`;
             submitBtn.className = "w-full mt-2 bg-slate-400 text-white font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 cursor-not-allowed";
+            
             try {
+                // ส่งข้อมูล (Google Sheets จะทำการหาเครื่องเดิมแล้วอัปเดตหรือเพิ่มใหม่ตามที่ท่านเขียน Script ไว้)
                 await fetch(API_URL, { method: "POST", body: JSON.stringify({ deviceName, shift, status }) });
-                alert("🎉 บันทึกข้อมูลเข้า Google Sheets เรียบร้อยแล้ว!");
-                document.getElementById('status-form').reset();
+                alert("🎉 บันทึกข้อมูลเรียบร้อยแล้ว!");
+                
+                // หากเป็นการแก้ไข เมื่อเซฟเสร็จอาจจะอยากให้กลับไปหน้าแดชบอร์ด
+                if (window.location.search.includes('deviceName')) {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    document.getElementById('status-form').reset();
+                }
             } catch (error) {
                 alert("❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล");
             } finally {
