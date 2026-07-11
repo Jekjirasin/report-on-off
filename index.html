@@ -184,6 +184,14 @@
         </select>
       </div>
       <div class="field">
+        <label for="shift-filter">กะ</label>
+        <select id="shift-filter" onchange="renderTableData()">
+          <option value="all">ทุกกะ</option>
+          <option value="กลางวัน">☀️ กลางวัน</option>
+          <option value="กลางคืน">🌙 กลางคืน</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="report-date">วันที่</label>
         <input type="date" id="report-date" onchange="loadDeviceStatus()">
       </div>
@@ -287,6 +295,7 @@
   function renderTableData() {
     const tableBody = document.getElementById('table-body');
     const filterValue = document.getElementById('status-filter').value;
+    const shiftFilterValue = document.getElementById('shift-filter').value;
     const searchQuery = document.getElementById('search-input').value.trim().toLowerCase();
     tableBody.innerHTML = '';
 
@@ -314,6 +323,7 @@
       let isConditionMatch = true;
       if (filterValue === "active_only" && currentStatus === "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
       else if (filterValue === "inactive_only" && currentStatus !== "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+      if (shiftFilterValue !== "all" && item.shift !== shiftFilterValue) isConditionMatch = false;
       if (searchQuery !== "" && !deviceNameLower.includes(searchQuery)) isConditionMatch = false;
       if (!isConditionMatch) return;
 
