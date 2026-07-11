@@ -1,198 +1,452 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard ตรวจสอบสถานะเครื่องจักร</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor สถานะเครื่องจักร</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F2EC;
+    --surface:#FFFFFF;
+    --ink:#20242B;
+    --ink-soft:#5B626D;
+    --ink-faint:#9298A1;
+    --steel:#2C3E52;
+    --steel-2:#3D5670;
+    --line:#E2E1D8;
+
+    --green:#1F5A31; --green-bg:#E7F3E0; --green-line:#BEDDA9; --green-dot:#2E8B4E;
+    --red:#8E2A1F;   --red-bg:#FBEAE6;   --red-line:#F0BAB0;  --red-dot:#C1392B;
+    --amber:#8A5A06; --amber-bg:#FCF0DA; --amber-line:#F2D093;--amber-dot:#D98C0F;
+    --off:#494F58;   --off-bg:#EBEDEE;   --off-line:#D0D4D8;  --off-dot:#7C838C;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans Thai','Noto Sans',sans-serif;
+    padding:28px 20px 60px;
+  }
+  .wrap{max-width:1180px; margin:0 auto;}
+
+  /* ---------- header / andon panel ---------- */
+  .panel{
+    background:var(--steel); border-radius:16px; padding:22px 26px;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    gap:18px; margin-bottom:20px; color:#fff;
+  }
+  .panel-left{display:flex; align-items:center; gap:16px; min-width:260px;}
+  .andon{display:flex; flex-direction:column; gap:5px; padding:6px 5px; background:rgba(0,0,0,.18); border-radius:8px;}
+  .andon i{display:block; width:10px; height:10px; border-radius:50%; background:#5b626d; opacity:.35;}
+  .andon i.on{opacity:1; box-shadow:0 0 0 3px rgba(255,255,255,.06);}
+  .andon i.g{background:var(--green-dot);} .andon i.a{background:var(--amber-dot);} .andon i.r{background:var(--red-dot);}
+  .panel h1{
+    font-family:'Kanit',sans-serif; font-weight:600; font-size:21px; margin:0 0 3px;
+    letter-spacing:.2px;
+  }
+  .panel p{margin:0; font-size:13px; color:#C7CDD5;}
+  .panel-controls{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .field{
+    display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.14); border-radius:10px; padding:9px 12px;
+  }
+  .field label{font-size:12.5px; color:#C7CDD5; font-weight:500; white-space:nowrap;}
+  .field input, .field select{
+    background:transparent; border:none; color:#fff; font-size:13.5px; outline:none;
+    font-family:inherit; min-width:0;
+  }
+  .field input::placeholder{color:#9AA2AC;}
+  .field select option{color:#20242B;}
+  .btn-refresh{
+    background:#fff; color:var(--steel); border:none; border-radius:10px;
+    padding:10px 18px; font-weight:600; font-size:13.5px; cursor:pointer;
+    font-family:'Noto Sans Thai',sans-serif; transition:transform .12s ease, opacity .12s ease;
+  }
+  .btn-refresh:active{transform:scale(.96);}
+  .nav-link{
+    display:inline-flex; align-items:center; gap:6px; border-radius:10px;
+    padding:10px 18px; font-weight:600; font-size:13.5px; text-decoration:none;
+    font-family:'Noto Sans Thai',sans-serif; transition:transform .12s ease, background .12s ease;
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.08); color:#fff;
+  }
+  .nav-link:hover{background:rgba(255,255,255,.16);}
+  .nav-link:active{transform:scale(.96);}
+  .nav-link.solid{background:#fff; color:var(--steel); border-color:#fff;}
+  .nav-link.solid:hover{background:#EDEEE8;}
+
+  /* ---------- summary ---------- */
+  .summary{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:20px;}
+  .stat{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:16px 18px; display:flex; align-items:center; gap:14px;
+  }
+  .stat .dot{width:11px; height:11px; border-radius:50%; flex-shrink:0;}
+  .stat .num{font-family:'Kanit',sans-serif; font-size:26px; font-weight:600; line-height:1;}
+  .stat .lbl{font-size:12.5px; color:var(--ink-soft); margin-top:3px;}
+
+  /* ---------- table ---------- */
+  .table-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden;}
+  table{width:100%; border-collapse:collapse; text-align:left;}
+  thead th{
+    background:var(--steel); color:#DCE1E7; font-size:11.5px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.06em; padding:13px 18px;
+  }
+  thead th:last-child{text-align:right;}
+  tbody td{padding:14px 18px; font-size:13.5px; border-top:1px solid var(--line); vertical-align:middle;}
+  tbody tr:hover{background:#FAFAF6;}
+  .device{font-weight:600; color:var(--ink);}
+  .shift{
+    display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:7px;
+    font-size:12px; font-weight:600; border:1px solid;
+  }
+  .shift.day{color:#8A5A06; background:var(--amber-bg); border-color:var(--amber-line);}
+  .shift.night{color:#2C3E52; background:#E8ECF1; border-color:#CBD3DC;}
+  .badge{
+    display:inline-flex; align-items:center; gap:7px; padding:5px 12px; border-radius:999px;
+    font-size:12px; font-weight:700; border:1px solid;
+  }
+  .badge .bdot{width:7px; height:7px; border-radius:50%;}
+  .badge.success{color:var(--green); background:var(--green-bg); border-color:var(--green-line);}
+  .badge.success .bdot{background:var(--green-dot); animation:pulse 1.6s infinite;}
+  .badge.fail{color:var(--red); background:var(--red-bg); border-color:var(--red-line);}
+  .badge.fail .bdot{background:var(--red-dot);}
+  .badge.off{color:var(--off); background:var(--off-bg); border-color:var(--off-line);}
+  .badge.off .bdot{background:var(--off-dot);}
+  .badge.pending{color:var(--amber); background:var(--amber-bg); border-color:var(--amber-line);}
+  .badge.pending .bdot{background:var(--amber-dot);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .ts{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-faint);}
+  .edit-btn{
+    border:1px solid var(--line); background:#fff; color:var(--steel-2); cursor:pointer;
+    border-radius:8px; padding:6px 12px; font-size:12.5px; font-weight:600;
+    font-family:'Noto Sans Thai',sans-serif; display:inline-flex; align-items:center; gap:6px;
+    transition:background .12s ease; text-decoration:none;
+  }
+  .edit-btn:hover{background:#F0F1EA;}
+  .empty{padding:60px 20px; text-align:center; color:var(--ink-faint); font-size:14px;}
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,24,30,.5); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .overlay.show{display:flex;}
+  .modal{
+    background:#fff; border-radius:16px; width:100%; max-width:380px; padding:22px;
+    box-shadow:0 20px 50px rgba(0,0,0,.25);
+  }
+  .modal h3{font-family:'Kanit',sans-serif; margin:0 0 4px; font-size:17px; font-weight:600;}
+  .modal .sub{font-size:12.5px; color:var(--ink-soft); margin:0 0 18px;}
+  .modal label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
+  .modal select{
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px;
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink); margin-bottom:18px;
+  }
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end;}
+  .modal-actions button{
+    border-radius:10px; padding:10px 16px; font-size:13.5px; font-weight:600; cursor:pointer;
+    font-family:'Noto Sans Thai',sans-serif; border:1px solid var(--line);
+  }
+  .btn-cancel{background:#fff; color:var(--ink-soft);}
+  .btn-save{background:var(--steel); color:#fff; border-color:var(--steel);}
+  .btn-save:disabled{opacity:.55; cursor:default;}
+  .modal-err{color:var(--red); font-size:12.5px; margin:-10px 0 14px;}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(10px);
+    background:var(--steel); color:#fff; padding:11px 20px; border-radius:10px; font-size:13.5px;
+    opacity:0; pointer-events:none; transition:all .25s ease; z-index:60; font-weight:500;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:640px){
+    .panel{padding:18px;}
+    thead th, tbody td{padding:11px 12px;}
+  }
+</style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 sm:p-8 font-sans antialiased text-slate-800">
-    <div class="max-w-6xl mx-auto">
-        
-        <header class="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200/80">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <span>🏭</span> Monitor Status เครื่องจักรประจำวัน
-                </h1>
-                <p class="text-slate-500 text-sm mt-1">ค้นหา ตรวจสอบ และคัดกรองสถานะเครื่องจักรย้อนหลัง</p>
-            </div>
-            
-            <div class="w-full lg:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl w-full sm:w-60 focus-within:border-indigo-500 focus-within:bg-white transition-all">
-                    <span class="text-slate-400 text-sm shrink-0">🔍</span>
-                    <input type="text" id="search-input" oninput="renderTableData()" placeholder="พิมพ์ชื่อเครื่องที่ต้องการ..." class="bg-transparent text-slate-800 font-medium focus:outline-none text-sm w-full placeholder-slate-400">
-                </div>
-                
-                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shrink-0 focus-within:border-indigo-500 focus-within:bg-white transition-all">
-                    <span class="text-sm shrink-0">🔌</span>
-                    <select id="status-filter" onchange="renderTableData()" class="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer text-sm pr-2">
-                        <option value="all">👁️ ทั้งหมด</option>
-                        <option value="active_only">🟢 เฉพาะเครื่องที่ "เปิด"</option>
-                        <option value="inactive_only">⚫ เฉพาะเครื่องที่ "ปิด"</option>
-                        <option value="pending_only">🟠 เฉพาะเครื่องที่ "รอการแก้ไข"</option>
-                    </select>
-                </div>
-                
-                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shrink-0 focus-within:border-indigo-500 focus-within:bg-white transition-all">
-                    <span class="text-sm shrink-0">📅</span>
-                    <input type="date" id="report-date" onchange="loadDeviceStatus()" class="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer text-sm">
-                </div>
-                
-                <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                    <button onclick="loadDeviceStatus()" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm transition-all duration-200 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer text-sm">
-                        <span>🔄</span> รีเฟรช
-                    </button>
-                    <a href="index.html" class="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center transition-colors">
-                        หน้าแรก
-                    </a>
-                    <a href="form.html" class="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-sm text-sm flex items-center justify-center gap-1.5 transition-colors">
-                        <span>📝</span> เพิ่มข้อมูล
-                    </a>
-                </div>
-            </div>
-        </header>
+<body>
+<div class="wrap">
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="summary-counters">
-            <div class="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-xs">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><span>🟢</span> บันทึกผล</p>
-                <p class="text-3xl font-extrabold text-green-600 mt-1.5" id="count-success">0</p>
-            </div>
-            <div class="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-xs">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><span>🔴</span> ไม่ได้บันทึกผล</p>
-                <p class="text-3xl font-extrabold text-red-600 mt-1.5" id="count-fail">0</p>
-            </div>
-            <div class="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-xs">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><span>⚫</span> ไม่ได้เปิดเครื่อง</p>
-                <p class="text-3xl font-extrabold text-zinc-600 mt-1.5" id="count-off">0</p>
-            </div>
-            <div class="bg-white p-4.5 rounded-xl border border-slate-200/80 shadow-xs">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><span>🟠</span> รอการแก้ไข</p>
-                <p class="text-3xl font-extrabold text-amber-600 mt-1.5" id="count-pending">0</p>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-slate-200 text-left">
-                    <thead class="bg-slate-800 text-slate-200 text-xs uppercase font-bold tracking-wider">
-                        <tr>
-                            <th class="px-6 py-4.5 w-1/3">เครื่อง / รายการขวด</th>
-                            <th class="px-6 py-4.5">กะทำงาน</th>
-                            <th class="px-6 py-4.5">สถานะการทำงาน</th>
-                            <th class="px-6 py-4.5">เวลาอัปเดตล่าสุด</th>
-                            <th class="px-6 py-4.5 text-center w-24">จัดการ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700 bg-white">
-                        <tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูล...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  <div class="panel">
+    <div class="panel-left">
+      <div class="andon" id="andon" title="สถานะภาพรวม">
+        <i class="r"></i><i class="a"></i><i class="g"></i>
+      </div>
+      <div>
+        <h1>Monitor สถานะเครื่องจักรประจำวัน</h1>
+        <p>ค้นหา ตรวจสอบ และแก้ไขสถานะเครื่องจักรที่บันทึกผ่านระบบ LINE</p>
+      </div>
     </div>
+    <div class="panel-controls">
+      <div class="field">
+        <span style="color:#C7CDD5;">🔍</span>
+        <input type="text" id="search-input" oninput="renderTableData()" placeholder="ค้นหาชื่อเครื่อง...">
+      </div>
+      <div class="field">
+        <label for="status-filter">เครื่อง</label>
+        <select id="status-filter" onchange="renderTableData()">
+          <option value="all">ทั้งหมด</option>
+          <option value="active_only">เฉพาะที่ "เปิด"</option>
+          <option value="inactive_only">เฉพาะที่ "ปิด"</option>
+          <option value="pending_only">เฉพาะที่ "รอการแก้ไข"</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="shift-filter">กะ</label>
+        <select id="shift-filter" onchange="renderTableData()">
+          <option value="all">ทุกกะ</option>
+          <option value="กลางวัน">☀️ กลางวัน</option>
+          <option value="กลางคืน">🌙 กลางคืน</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="report-date">วันที่</label>
+        <input type="date" id="report-date" onchange="loadDeviceStatus()">
+      </div>
+      <button class="btn-refresh" onclick="loadDeviceStatus()">↻ รีเฟรช</button>
+      <a href="index.html" class="nav-link">หน้าแรก</a>
+      <a href="form.html" class="nav-link solid">📝 เพิ่มข้อมูล</a>
+    </div>
+  </div>
 
-    <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbyxR5p9wETP6q5LF4yZ3hvZWKIJLf3tcgqGn8algLGEiKtGZyPGw7INRLmfLfxHL4ZQrw/exec"; 
-        let serverDataCache = []; 
-        
-        function setDefaultDate() {
-            const tzoffset = (new Date()).getTimezoneOffset() * 60000; 
-            const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
-            document.getElementById('report-date').value = localISOTime;
-        }
-        
-        async function loadDeviceStatus() {
-            const tableBody = document.getElementById('table-body');
-            const selectedDate = document.getElementById('report-date').value;
-            tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400">🕒 กำลังดึงข้อมูลของวันที่ ${selectedDate}...</td></tr>`;
-            try {
-                const response = await fetch(`${API_URL}?date=${selectedDate}`);
-                serverDataCache = await response.json();
-                renderTableData(); 
-            } catch (error) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-red-500 font-semibold">❌ ดึงข้อมูลไม่สำเร็จ โปรดตรวจสอบ Web App</td></tr>`;
-            }
-        }
-        
-        function renderTableData() {
-            const tableBody = document.getElementById('table-body');
-            const filterValue = document.getElementById('status-filter').value; 
-            const searchQuery = document.getElementById('search-input').value.trim().toLowerCase(); 
-            tableBody.innerHTML = ''; 
-            let success = 0, fail = 0, off = 0, pending = 0;
-            let displayedRowsCount = 0;
-            
-            if (serverDataCache.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium">📭 ไม่พบข้อมูลเครื่องจักรถูกบันทึกในวันที่เลือก</td></tr>`;
-                updateCounters(0, 0, 0, 0);
-                return;
-            }
-            
-            serverDataCache.sort((a, b) => a.deviceName.localeCompare(b.deviceName, undefined, {numeric: true, sensitivity: 'base'}));
-            
-            serverDataCache.forEach(item => {
-                let currentStatus = item.status ? item.status.trim() : "-";
-                let deviceNameLower = item.deviceName ? item.deviceName.toLowerCase() : "";
-                
-                if (currentStatus === "บันทึกผล") success++;
-                else if (currentStatus === "ไม่ได้บันทึกผล") fail++;
-                else if (currentStatus === "ไม่ได้เปิดเครื่อง") off++;
-                else if (currentStatus === "รอการแก้ไข") pending++;
-                
-                let isConditionMatch = true;
-                if (filterValue === "active_only" && currentStatus === "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
-                else if (filterValue === "inactive_only" && currentStatus !== "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
-                else if (filterValue === "pending_only" && currentStatus !== "รอการแก้ไข") isConditionMatch = false;
-                
-                if (searchQuery !== "" && !deviceNameLower.includes(searchQuery)) isConditionMatch = false;
-                if (!isConditionMatch) return; 
-                
-                displayedRowsCount++;
-                let badgeColor = "bg-slate-100 text-slate-700 border-slate-200", dotColor = "bg-slate-400";
-                
-                if (currentStatus === "บันทึกผล") { badgeColor = "bg-green-50 text-green-700 border border-green-200"; dotColor = "bg-green-500"; }
-                else if (currentStatus === "ไม่ได้บันทึกผล") { badgeColor = "bg-red-50 text-red-700 border border-red-200"; dotColor = "bg-red-500"; }
-                else if (currentStatus === "ไม่ได้เปิดเครื่อง") { badgeColor = "bg-zinc-100 text-zinc-700 border border-zinc-200"; dotColor = "bg-zinc-500"; }
-                else if (currentStatus === "รอการแก้ไข") { badgeColor = "bg-amber-50 text-amber-700 border border-amber-200"; dotColor = "bg-amber-500"; }
-                
-                const shiftBadge = item.shift === "กลางวัน" 
-                    ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold">☀️ กลางวัน</span>`
-                    : `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-bold">🌙 กลางคืน</span>`;
-                
-                const editUrl = `form.html?deviceName=${encodeURIComponent(item.deviceName)}&shift=${encodeURIComponent(item.shift)}&status=${encodeURIComponent(currentStatus)}`;
+  <div class="summary" id="summary-counters">
+    <div class="stat"><span class="dot" style="background:var(--green-dot)"></span>
+      <div><div class="num" id="count-success" style="color:var(--green)">0</div><div class="lbl">บันทึกผล</div></div></div>
+    <div class="stat"><span class="dot" style="background:var(--red-dot)"></span>
+      <div><div class="num" id="count-fail" style="color:var(--red)">0</div><div class="lbl">ไม่ได้บันทึกผล</div></div></div>
+    <div class="stat"><span class="dot" style="background:var(--off-dot)"></span>
+      <div><div class="num" id="count-off" style="color:var(--off)">0</div><div class="lbl">ไม่ได้เปิดเครื่อง</div></div></div>
+    <div class="stat"><span class="dot" style="background:var(--amber-dot)"></span>
+      <div><div class="num" id="count-pending" style="color:var(--amber)">0</div><div class="lbl">รอการแก้ไข</div></div></div>
+  </div>
 
-                const rowHtml = `
-                    <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4 font-bold text-slate-900">${item.deviceName}</td>
-                        <td class="px-6 py-4">${shiftBadge}</td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${badgeColor}">
-                                <span class="h-1.5 w-1.5 rounded-full ${dotColor} ${currentStatus === 'บันทึกผล' ? 'animate-pulse' : ''}"></span>
-                                ${currentStatus}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 text-slate-400 font-mono text-xs">${item.dateStr}</td>
-                        <td class="px-6 py-4 text-center">
-                            <a href="${editUrl}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs transition-all active:scale-95 shadow-sm">
-                                <span>✏️</span> แก้ไข
-                            </a>
-                        </td>
-                    </tr>`;
-                tableBody.innerHTML += rowHtml;
-            });
-            
-            if (displayedRowsCount === 0) tableBody.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium">🔍 ไม่พบข้อมูลเครื่องจักรที่ตรงกับการค้นหา</td></tr>`;
-            updateCounters(success, fail, off, pending);
-        }
-        
-        function updateCounters(s, f, o, p) {
-            document.getElementById('count-success').innerText = s;
-            document.getElementById('count-fail').innerText = f;
-            document.getElementById('count-off').innerText = o;
-            document.getElementById('count-pending').innerText = p;
-        }
-        
-        window.onload = function() { setDefaultDate(); loadDeviceStatus(); };
-    </script>
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>เครื่อง / รายการขวด</th>
+          <th>กะทำงาน</th>
+          <th>สถานะการทำงาน</th>
+          <th>เวลาอัปเดตล่าสุด</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="5" class="empty">กำลังดึงข้อมูล...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="overlay" id="edit-overlay">
+  <div class="modal">
+    <h3 id="modal-title">แก้ไขสถานะ</h3>
+    <p class="sub" id="modal-sub"></p>
+    <label for="modal-status">สถานะการทำงาน</label>
+    <select id="modal-status">
+      <option value="บันทึกผล">🟢 บันทึกผล</option>
+      <option value="ไม่ได้บันทึกผล">🔴 ไม่ได้บันทึกผล</option>
+      <option value="ไม่ได้เปิดเครื่อง">⚫ ไม่ได้เปิดเครื่อง</option>
+      <option value="รอการแก้ไข">🟠 รอการแก้ไข</option>
+    </select>
+    <div class="modal-err" id="modal-err" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
+      <button class="btn-save" id="modal-save-btn" onclick="submitEdit()">บันทึกการแก้ไข</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ⚠️ ลิงก์ URL เว็บแอปเดิมของคุณ
+  const API_URL = "https://script.google.com/macros/s/AKfycbyxR5p9wETP6q5LF4yZ3hvZWKIJLf3tcgqGn8algLGEiKtGZyPGw7INRLmfLfxHL4ZQrw/exec";
+
+  let serverDataCache = [];
+  let editingRecord = null;
+
+  function setDefaultDate() {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 10);
+    document.getElementById('report-date').value = localISOTime;
+  }
+
+  async function loadDeviceStatus() {
+    const tableBody = document.getElementById('table-body');
+    const selectedDate = document.getElementById('report-date').value;
+    tableBody.innerHTML = `<tr><td colspan="5" class="empty">กำลังดึงข้อมูลของวันที่ ${selectedDate}...</td></tr>`;
+    try {
+      const response = await fetch(`${API_URL}?date=${selectedDate}`);
+      serverDataCache = await response.json();
+      renderTableData();
+    } catch (error) {
+      console.error("Error standard fetch:", error);
+      tableBody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">ดึงข้อมูลไม่สำเร็จ โปรดตรวจสอบการ Deploy Web App ใน Apps Script</td></tr>`;
+    }
+  }
+
+  function statusMeta(status){
+    if(status === "บันทึกผล") return {cls:"success"};
+    if(status === "ไม่ได้บันทึกผล") return {cls:"fail"};
+    if(status === "ไม่ได้เปิดเครื่อง") return {cls:"off"};
+    if(status === "รอการแก้ไข") return {cls:"pending"};
+    return {cls:"off"};
+  }
+
+  function updateAndon(success, fail, off, pending){
+    const lights = document.querySelectorAll('#andon i');
+    lights.forEach(l => l.classList.remove('on'));
+    if(fail > 0) document.querySelector('#andon i.r').classList.add('on');
+    else if(pending > 0) document.querySelector('#andon i.a').classList.add('on');
+    else document.querySelector('#andon i.g').classList.add('on');
+  }
+
+  function renderTableData() {
+    const tableBody = document.getElementById('table-body');
+    const filterValue = document.getElementById('status-filter').value;
+    const shiftFilterValue = document.getElementById('shift-filter').value;
+    const searchQuery = document.getElementById('search-input').value.trim().toLowerCase();
+    tableBody.innerHTML = '';
+
+    let success = 0, fail = 0, off = 0, pending = 0;
+    let displayedRowsCount = 0;
+
+    if (serverDataCache.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="5" class="empty">ไม่พบข้อมูลเครื่องจักรที่ถูกบันทึกในวันที่เลือก</td></tr>`;
+      updateCounters(0, 0, 0, 0);
+      updateAndon(0,0,0,0);
+      return;
+    }
+
+    serverDataCache.sort((a, b) => a.deviceName.localeCompare(b.deviceName, undefined, {numeric: true, sensitivity: 'base'}));
+
+    serverDataCache.forEach((item, idx) => {
+      let currentStatus = item.status ? item.status.trim() : "-";
+      let deviceNameLower = item.deviceName ? item.deviceName.toLowerCase() : "";
+
+      if (currentStatus === "บันทึกผล") success++;
+      else if (currentStatus === "ไม่ได้บันทึกผล") fail++;
+      else if (currentStatus === "ไม่ได้เปิดเครื่อง") off++;
+      else if (currentStatus === "รอการแก้ไข") pending++;
+
+      let isConditionMatch = true;
+      if (filterValue === "active_only" && currentStatus === "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+      else if (filterValue === "inactive_only" && currentStatus !== "ไม่ได้เปิดเครื่อง") isConditionMatch = false;
+      else if (filterValue === "pending_only" && currentStatus !== "รอการแก้ไข") isConditionMatch = false;
+      if (shiftFilterValue !== "all" && item.shift !== shiftFilterValue) isConditionMatch = false;
+      if (searchQuery !== "" && !deviceNameLower.includes(searchQuery)) isConditionMatch = false;
+      if (!isConditionMatch) return;
+
+      displayedRowsCount++;
+      const meta = statusMeta(currentStatus);
+      const shiftHtml = item.shift === "กลางวัน"
+        ? `<span class="shift day">☀️ กลางวัน</span>`
+        : `<span class="shift night">🌙 กลางคืน</span>`;
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td class="device">${item.deviceName}</td>
+        <td>${shiftHtml}</td>
+        <td><span class="badge ${meta.cls}"><span class="bdot"></span>${currentStatus}</span></td>
+        <td class="ts">${item.dateStr}</td>
+        <td style="text-align:right;"><button class="edit-btn" data-idx="${idx}">✎ แก้ไข</button></td>
+      `;
+      row.querySelector('.edit-btn').addEventListener('click', () => openEditModal(item));
+      tableBody.appendChild(row);
+    });
+
+    if (displayedRowsCount === 0) {
+      tableBody.innerHTML = `<tr><td colspan="5" class="empty">ไม่พบข้อมูลเครื่องจักรที่ตรงกับการค้นหาของคุณ</td></tr>`;
+    }
+    updateCounters(success, fail, off, pending);
+    updateAndon(success, fail, off, pending);
+  }
+
+  function updateCounters(s, f, o, p) {
+    document.getElementById('count-success').innerText = s;
+    document.getElementById('count-fail').innerText = f;
+    document.getElementById('count-off').innerText = o;
+    document.getElementById('count-pending').innerText = p;
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ---------- edit modal ----------
+  function openEditModal(item){
+    editingRecord = item;
+    document.getElementById('modal-title').innerText = `แก้ไขสถานะ: ${item.deviceName}`;
+    document.getElementById('modal-sub').innerText = `กะ${item.shift || '-'} • ${item.dateStr || ''}`;
+    document.getElementById('modal-status').value = (item.status || '').trim();
+    document.getElementById('modal-err').style.display = 'none';
+    document.getElementById('edit-overlay').classList.add('show');
+  }
+  function closeEditModal(){
+    document.getElementById('edit-overlay').classList.remove('show');
+    editingRecord = null;
+  }
+
+  async function submitEdit(){
+    if(!editingRecord) return;
+    const newStatus = document.getElementById('modal-status').value;
+    const saveBtn = document.getElementById('modal-save-btn');
+    const errBox = document.getElementById('modal-err');
+    errBox.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.innerText = 'กำลังบันทึก...';
+
+    // NOTE: this payload/shape is an assumption about the backend contract.
+    // The Google Apps Script (doPost) needs to recognize action:"update" and
+    // match the existing row by deviceName + shift + dateStr (or an id, if
+    // your sheet has one) and overwrite it, rather than appending a new row.
+    const payload = {
+      action: "update",
+      id: editingRecord.id || null,
+      deviceName: editingRecord.deviceName,
+      shift: editingRecord.shift,
+      dateStr: editingRecord.dateStr,
+      status: newStatus
+    };
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json().catch(() => ({ ok: true }));
+      if (result && result.ok === false) throw new Error(result.error || 'บันทึกไม่สำเร็จ');
+
+      editingRecord.status = newStatus;
+      renderTableData();
+      closeEditModal();
+      showToast('บันทึกการแก้ไขเรียบร้อย');
+    } catch(err) {
+      console.error(err);
+      errBox.innerText = 'บันทึกไม่สำเร็จ: ' + err.message;
+      errBox.style.display = 'block';
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerText = 'บันทึกการแก้ไข';
+    }
+  }
+
+  document.getElementById('edit-overlay').addEventListener('click', (e) => {
+    if(e.target.id === 'edit-overlay') closeEditModal();
+  });
+
+  window.onload = function() {
+    setDefaultDate();
+    loadDeviceStatus();
+  };
+</script>
 </body>
 </html>
