@@ -139,12 +139,14 @@
   }
   .modal h3{font-family:'Kanit',sans-serif; margin:0 0 4px; font-size:17px; font-weight:600;}
   .modal .sub{font-size:12.5px; color:var(--ink-soft); margin:0 0 18px;}
-  .modal label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;}
-  .modal select{
+  .modal label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; margin-top:14px;}
+  .modal label:first-of-type{margin-top:0;}
+  .modal select, .modal input[type=text]{
     width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px;
-    font-size:14px; font-family:inherit; background:#fff; color:var(--ink); margin-bottom:18px;
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink);
   }
-  .modal-actions{display:flex; gap:10px; justify-content:flex-end;}
+  .modal select:focus, .modal input[type=text]:focus{outline:none; border-color:var(--steel-2);}
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:18px;}
   .modal-actions button{
     border-radius:10px; padding:10px 16px; font-size:13.5px; font-weight:600; cursor:pointer;
     font-family:'Noto Sans Thai',sans-serif; border:1px solid var(--line);
@@ -152,7 +154,7 @@
   .btn-cancel{background:#fff; color:var(--ink-soft);}
   .btn-save{background:var(--steel); color:#fff; border-color:var(--steel);}
   .btn-save:disabled{opacity:.55; cursor:default;}
-  .modal-err{color:var(--red); font-size:12.5px; margin:-10px 0 14px;}
+  .modal-err{color:var(--red); font-size:12.5px; margin:14px 0 0;}
 
   .toast{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(10px);
@@ -243,8 +245,18 @@
 
 <div class="overlay" id="edit-overlay">
   <div class="modal">
-    <h3 id="modal-title">แก้ไขสถานะ</h3>
+    <h3 id="modal-title">แก้ไขข้อมูล</h3>
     <p class="sub" id="modal-sub"></p>
+
+    <label for="modal-device">ชื่อเครื่องจักร / รายการ</label>
+    <input type="text" id="modal-device" placeholder="เช่น CR-01 250 วันเวย์">
+
+    <label for="modal-shift">กะทำงาน</label>
+    <select id="modal-shift">
+      <option value="กลางวัน">☀️ กลางวัน</option>
+      <option value="กลางคืน">🌙 กลางคืน</option>
+    </select>
+
     <label for="modal-status">สถานะการทำงาน</label>
     <select id="modal-status">
       <option value="บันทึกผล">🟢 บันทึกผล</option>
@@ -383,8 +395,10 @@
   // ---------- edit modal ----------
   function openEditModal(item){
     editingRecord = item;
-    document.getElementById('modal-title').innerText = `แก้ไขสถานะ: ${item.deviceName}`;
-    document.getElementById('modal-sub').innerText = `กะ${item.shift || '-'} • ${item.dateStr || ''}`;
+    document.getElementById('modal-title').innerText = `แก้ไขข้อมูล: ${item.deviceName}`;
+    document.getElementById('modal-sub').innerText = `บันทึกล่าสุด ${item.dateStr || '-'}`;
+    document.getElementById('modal-device').value = item.deviceName || '';
+    document.getElementById('modal-shift').value = item.shift === 'กลางคืน' ? 'กลางคืน' : 'กลางวัน';
     document.getElementById('modal-status').value = (item.status || '').trim();
     document.getElementById('modal-err').style.display = 'none';
     document.getElementById('edit-overlay').classList.add('show');
@@ -396,23 +410,35 @@
 
   async function submitEdit(){
     if(!editingRecord) return;
+    const newDeviceName = document.getElementById('modal-device').value.trim();
+    const newShift = document.getElementById('modal-shift').value;
     const newStatus = document.getElementById('modal-status').value;
     const saveBtn = document.getElementById('modal-save-btn');
     const errBox = document.getElementById('modal-err');
     errBox.style.display = 'none';
+
+    if(!newDeviceName){
+      errBox.innerText = 'กรุณาระบุชื่อเครื่องจักร';
+      errBox.style.display = 'block';
+      return;
+    }
+
     saveBtn.disabled = true;
     saveBtn.innerText = 'กำลังบันทึก...';
 
     // NOTE: this payload/shape is an assumption about the backend contract.
-    // The Google Apps Script (doPost) needs to recognize action:"update" and
-    // match the existing row by deviceName + shift + dateStr (or an id, if
-    // your sheet has one) and overwrite it, rather than appending a new row.
+    // The Google Apps Script (doPost) needs to recognize action:"update",
+    // find the ORIGINAL row using originalDeviceName + originalShift + dateStr
+    // (or an id, if your sheet has one), then overwrite deviceName/shift/status
+    // on that row, rather than appending a new row.
     const payload = {
       action: "update",
       id: editingRecord.id || null,
-      deviceName: editingRecord.deviceName,
-      shift: editingRecord.shift,
+      originalDeviceName: editingRecord.deviceName,
+      originalShift: editingRecord.shift,
       dateStr: editingRecord.dateStr,
+      deviceName: newDeviceName,
+      shift: newShift,
       status: newStatus
     };
 
@@ -425,6 +451,8 @@
       const result = await res.json().catch(() => ({ ok: true }));
       if (result && result.ok === false) throw new Error(result.error || 'บันทึกไม่สำเร็จ');
 
+      editingRecord.deviceName = newDeviceName;
+      editingRecord.shift = newShift;
       editingRecord.status = newStatus;
       renderTableData();
       closeEditModal();
