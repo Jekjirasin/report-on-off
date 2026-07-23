@@ -40,6 +40,7 @@
     padding:11px 14px; font-size:14px; font-family:inherit; color:var(--ink); outline:none;
   }
   input[type=text]:focus{border-color:var(--steel-2); background:#fff;}
+  .field-hint{font-size:11.5px; color:var(--ink-faint); margin:6px 2px 0;}
   .shift-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .shift-opt{
     border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; align-items:center;
@@ -77,7 +78,8 @@
   <form id="status-form" onsubmit="submitForm(event)">
     <div class="group">
       <label class="field-label">🤖 ชื่อเครื่องจักร / รายการ</label>
-      <input type="text" id="form-device-name" required placeholder="เช่น CR-01 250 วันเวย์">
+      <input type="text" id="form-device-name" required placeholder="เช่น CR-01 250 วันเวย์" value="CR-">
+      <p class="field-hint">พิมพ์ต่อจาก "CR-" ได้เลย เช่น CR-01</p>
     </div>
     <div class="group">
       <label class="field-label">⏰ กะทำงาน</label>
@@ -101,17 +103,26 @@
 
 <script>
   const API_URL = "https://script.google.com/macros/s/AKfycbyxR5p9wETP6q5LF4yZ3hvZWKIJLf3tcgqGn8algLGEiKtGZyPGw7INRLmfLfxHL4ZQrw/exec";
+  const DEFAULT_PREFIX = "CR-";
 
   function checkEditMode() {
     const urlParams = new URLSearchParams(window.location.search);
     const deviceName = urlParams.get('deviceName');
     const shift = urlParams.get('shift');
     const status = urlParams.get('status');
+    const deviceInput = document.getElementById('form-device-name');
 
     if (deviceName) {
-      document.getElementById('form-device-name').value = deviceName;
+      deviceInput.value = deviceName;
       document.querySelector('.topbar h1').innerHTML = "✏️ แก้ไขข้อมูลเครื่องจักร";
       document.getElementById('submit-btn').innerHTML = "📥 อัปเดตข้อมูลลง Google Sheets";
+    } else {
+      // ฟอร์มใหม่: ตั้งค่าเริ่มต้นเป็น "CR-" แล้ววางเคอร์เซอร์ต่อท้ายให้พิมพ์ต่อได้เลย
+      deviceInput.value = DEFAULT_PREFIX;
+      requestAnimationFrame(() => {
+        deviceInput.focus();
+        deviceInput.setSelectionRange(deviceInput.value.length, deviceInput.value.length);
+      });
     }
     if (shift) {
       document.getElementsByName('form-shift').forEach(radio => { if (radio.value === shift) radio.checked = true; });
@@ -125,7 +136,16 @@
   async function submitForm(event) {
     event.preventDefault();
     const submitBtn = document.getElementById('submit-btn');
-    const deviceName = document.getElementById('form-device-name').value.trim();
+    const deviceInput = document.getElementById('form-device-name');
+    let deviceName = deviceInput.value.trim();
+
+    // กันไว้เผื่อผู้ใช้ลบ prefix ทิ้งโดยไม่ตั้งใจ หรือส่งมาแค่ "CR-" เฉยๆ
+    if (!deviceName || deviceName.toUpperCase() === DEFAULT_PREFIX) {
+      alert("กรุณาระบุชื่อ/หมายเลขเครื่องจักรต่อท้าย " + DEFAULT_PREFIX);
+      deviceInput.focus();
+      return;
+    }
+
     const shift = document.querySelector('input[name="form-shift"]:checked').value;
     const status = document.getElementById('form-status').value;
 
@@ -139,6 +159,11 @@
         window.location.href = 'dashboard.html';
       } else {
         document.getElementById('status-form').reset();
+        deviceInput.value = DEFAULT_PREFIX;
+        requestAnimationFrame(() => {
+          deviceInput.focus();
+          deviceInput.setSelectionRange(deviceInput.value.length, deviceInput.value.length);
+        });
       }
     } catch (error) {
       alert("❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล");
