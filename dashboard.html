@@ -174,11 +174,13 @@
   .sheet-overlay{
     position:fixed; inset:0; background:rgba(20,24,30,.55); display:none;
     z-index:70; padding:0; align-items:flex-start; justify-content:center;
+    overflow-x:hidden;
   }
   .sheet-overlay.show{display:flex;}
   .sheet{
     background:var(--bg); width:100%; max-width:480px; min-height:100vh;
     margin:0 auto; display:flex; flex-direction:column;
+    overflow-x:hidden;
   }
   .sheet-head{
     background:var(--steel); color:#fff; padding:18px 20px 20px;
@@ -217,13 +219,17 @@
     background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden;
   }
   .sheet-row{
-    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
     padding:12px 14px; border-top:1px solid var(--line);
   }
   .sheet-row:first-child{border-top:none;}
-  .sheet-row-main{min-width:0;}
-  .sheet-row-name{font-weight:600; font-size:13.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .sheet-row-time{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-faint); margin-top:2px;}
+  .sheet-row-main{min-width:0; flex:1 1 auto;}
+  .sheet-row-name{
+    font-weight:600; font-size:13.5px; color:var(--ink); line-height:1.35;
+    white-space:normal; overflow-wrap:anywhere; word-break:break-word;
+  }
+  .sheet-row-time{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-faint); margin-top:3px;}
+  .sheet-row .badge{flex-shrink:0; margin-top:1px;}
   .sheet-empty{padding:26px 14px; text-align:center; color:var(--ink-faint); font-size:13px;}
 
   .sheet-actions{
